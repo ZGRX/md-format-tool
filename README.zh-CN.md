@@ -42,7 +42,7 @@ npm ci
 npm run dev
 ```
 
-打开终端显示的本机地址，默认是 [http://127.0.0.1:5173/](http://127.0.0.1:5173/)。运行 `npm test` 验证格式识别与往返转换，运行 `npm run build` 构建。构建后可通过 `npm run preview` 体验，Word 接口依然使用本机 Pandoc。
+打开终端显示的本机地址，默认是 [http://127.0.0.1:5173/](http://127.0.0.1:5173/)。
 
 Word 导出还需要 [Pandoc](https://pandoc.org/installing.html)，支持从 PATH、项目下的 `.tools/pandoc-*/bin/pandoc` 或环境变量 `PANDOC_PATH` 查找。
 
@@ -53,9 +53,37 @@ Word 导出还需要 [Pandoc](https://pandoc.org/installing.html)，支持从 PA
 - **Word 文档。** 默认导出 Word 标题样式、原生表格和 OMML 公式。公式选项支持转图片或在 KaTeX 报错的位置保留源码。同一份内容通过本机 HTTP 接口交给 Pandoc，生成文件后直接返回浏览器。
 - **Markdown 笔记。** 提供渲染预览和源码预览，可复制或下载。导出使用 Obsidian 支持的美元分隔符和 Markdown 表格语法。
 
-## 从源码构建插件
+## 开发者指南
 
-运行 `npm ci` 和 `npm run build:obsidian`，再从 `obsidian/dist/md-format-tool/` 复制三个插件文件，并按上方的手动安装步骤放入笔记库。
+### 构建和测试 Obsidian 插件
+
+发布流程使用 Node.js 22。从头下载源码并在本机构建，可以执行以下命令：
+
+```sh
+git clone https://github.com/ZGRX/md-format-tool.git
+cd md-format-tool
+npm ci
+npm test
+npm run build:obsidian
+```
+
+1. 从 `obsidian/dist/md-format-tool/` 复制 `main.js`、`manifest.json` 和 `styles.css` 到测试笔记库的 `.obsidian/plugins/md-format-tool/` 目录。
+2. 在 **设置 → 第三方插件** 中启用 **Markdown Format Tool**。每次重新构建后，重新复制三个文件，再关闭并启用插件。
+3. 把[上面的示例](#试一次粘贴)粘贴到测试笔记里。改过公式识别逻辑时，也试一下普通文字、代码块和已有公式的 Markdown，确认插件保留这些内容。
+
+开发网页工具时，按上方步骤运行 `npm run dev`。用 `npm run build` 同时构建网页工具和插件，再用 `npm run preview` 预览构建后的网页。预览里的 Word 导出仍使用本机 Pandoc。
+
+### 从哪里改代码
+
+| 文件 | 用途 |
+| --- | --- |
+| [`obsidian/main.ts`](obsidian/main.ts) | 接收 Obsidian 粘贴事件、注册命令，并把修复结果写回编辑器。 |
+| [`obsidian/paste.ts`](obsidian/paste.ts) | 选择剪贴板内容，并决定粘贴时自动应用哪些修复。 |
+| [`src/format.ts`](src/format.ts) 和 [`src/import-html.ts`](src/import-html.ts) | 识别公式、将富文本 HTML 转成 Markdown。插件和网页工具共用这两个模块。 |
+| [`src/app.tsx`](src/app.tsx) 和 [`src/export.ts`](src/export.ts) | 实现网页界面和导出功能。 |
+| [`tests/format.test.ts`](tests/format.test.ts) | 测试公式识别、粘贴修复，以及哪些 Markdown 应原样保留。 |
+
+提交粘贴问题时，请附上来源应用、可分享的最小示例、实际输出和期望的 Markdown。修复公式识别或粘贴行为时，把复现示例加到回归测试里，再运行 `npm test`。
 
 ## 首版范围
 
