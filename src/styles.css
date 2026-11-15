@@ -41,7 +41,7 @@ main { max-width: 1440px; margin: auto; padding: 34px 34px 36px; }
 .panel-heading > div, .review-heading > div { display: flex; align-items: center; gap: 9px; }
 .panel-heading h2, .review-heading h3 { margin: 0; font-size: 15px; font-weight: 720; }
 .section-icon { display: grid; place-items: center; color: #276b55; background: #edf5ef; width: 31px; height: 31px; border-radius: 8px; }
-.source-buttons { gap: 5px !important; }
+.panel-heading > .source-buttons { gap: 5px; }
 .subtle, .secondary, .primary, .text-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; white-space: nowrap; }
 .subtle { background: transparent; border: 1px solid transparent; border-radius: 7px; padding: 7px 9px; color: var(--muted); font-size: 13px; }
 .subtle:hover { background: #eef4ef; color: var(--ink); }
@@ -135,7 +135,7 @@ input[type="checkbox"] { accent-color: var(--accent); margin: 2px 0 0; flex: non
 .export-stage { position: fixed; top: 0; left: -12000px; width: max-content; pointer-events: none; }
 .capture-page { padding: 32px; background: white; overflow: hidden; }
 .capture-block { display: flow-root; }
-.capture-block > * { margin-top: 0 !important; margin-bottom: 10px !important; }
+.capture-page .capture-block > * { margin-top: 0; margin-bottom: 10px; transform-origin: top left; }
 .capture-block > .table-scroll, .capture-block .katex-display { overflow: visible; }
 .capture-block .katex-display > .katex { text-align: left; }
 .capture-block table { table-layout: auto; }

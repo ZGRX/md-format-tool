@@ -25,6 +25,11 @@ const { metafile, outputFiles } = await build({
   write: false,
   outfile: join(root, 'main.js'),
 })
+// Dependencies must also avoid lookbehind: older iOS versions cannot load
+// the plugin if even an unused function contains one of these expressions.
+if (/\(\?<[=!]/.test(outputFiles[0].text)) {
+  throw new Error('The Obsidian bundle contains a regex lookbehind unsupported before iOS 16.4.')
+}
 
 const dependencies = new Set()
 for (const path of Object.keys(metafile.inputs)) {

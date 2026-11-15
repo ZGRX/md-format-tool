@@ -62,6 +62,13 @@ test('a pipe inside dollar math does not add a column to a GFM table', () => {
   assert.equal(analyze(output).normalized.length, 0)
 })
 
+test('formula closing delimiters respect the number of preceding backslashes', () => {
+  const source = String.raw`公式 \(x \\) + y\)。`
+  const { normalized } = analyze(source, { obsidian: true })
+  assert.equal(applyEdits(source, normalized), String.raw`公式 $x \\) + y$。`)
+  assert.deepEqual(analyze(String.raw`公式 \\\(x=1\\\)。`, { obsidian: true }).normalized, [])
+})
+
 test('malformed formulas and missing images have source locations', () => {
   const result = analyze(String.raw`# 笔记
 公式 $\frac{1$。

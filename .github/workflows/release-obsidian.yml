@@ -1,31 +1,30 @@
 name: Release Obsidian plugin
 
 on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
   workflow_dispatch:
-    inputs:
-      version:
-        description: Existing Git tag matching manifest.json, such as 0.2.1
-        required: true
-        type: string
 
 permissions:
+  attestations: write
   contents: write
+  id-token: write
 
 concurrency:
-  group: obsidian-release-${{ inputs.version }}
+  group: obsidian-release-${{ github.ref }}
 
 jobs:
   publish:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      RELEASE_VERSION: ${{ inputs.version }}
+      RELEASE_VERSION: ${{ github.ref_name }}
     steps:
       - name: Validate release tag
-        run: '[[ "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]'
+        run: '[[ "$GITHUB_REF_TYPE" == tag && "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]'
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          ref: refs/tags/${{ inputs.version }}
           persist-credentials: false
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
@@ -36,6 +35,13 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+      - name: Attest plugin assets
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-path: |
+            obsidian/dist/md-format-tool/main.js
+            obsidian/dist/md-format-tool/manifest.json
+            obsidian/dist/md-format-tool/styles.css
       - name: Publish release with plugin assets
         env:
           GH_TOKEN: ${{ github.token }}
@@ -43,12 +49,11 @@ jobs:
           cat > "$RUNNER_TEMP/obsidian-release-notes.md" <<'NOTES'
           Markdown Format Tool repairs LaTeX formulas as you paste into Obsidian. Use the command palette to review ambiguous formulas.
 
-          To install manually, extract the plugin ZIP into your vault's `.obsidian/plugins/` folder and enable Markdown Format Tool in Community plugins.
+          To install manually, copy the three release assets into your vault's `.obsidian/plugins/md-format-tool/` folder and enable Markdown Format Tool in Community plugins.
           NOTES
           gh release create "$RELEASE_VERSION" --verify-tag \
             --title "Markdown Format Tool $RELEASE_VERSION" \
             --notes-file "$RUNNER_TEMP/obsidian-release-notes.md" \
             obsidian/dist/md-format-tool/main.js \
             obsidian/dist/md-format-tool/manifest.json \
-            obsidian/dist/md-format-tool/styles.css \
-            "obsidian/dist/md-format-tool-$RELEASE_VERSION.zip"
+            obsidian/dist/md-format-tool/styles.css

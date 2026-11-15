@@ -111,9 +111,10 @@ class RepairModal extends Modal {
       this.contentEl.createEl('p', { text: this.labels.optional })
       const list = this.contentEl.createDiv({ cls: 'md-format-tool-review' })
       for (const suggestion of suggestions) {
-        const diff = document.createDocumentFragment()
-        diff.createEl('code', { text: suggestion.original, cls: 'md-format-tool-before' })
-        diff.createEl('code', { text: suggestion.replacement, cls: 'md-format-tool-after' })
+        const diff = createFragment((fragment) => {
+          fragment.createEl('code', { text: suggestion.original, cls: 'md-format-tool-before' })
+          fragment.createEl('code', { text: suggestion.replacement, cls: 'md-format-tool-after' })
+        })
         const label = this.labels.line(suggestion.line)
         new Setting(list).setName(label).setDesc(diff)
           .addToggle((toggle) => toggle.setTooltip(label).onChange((enabled) => {
@@ -203,7 +204,7 @@ export default class MarkdownFormatPlugin extends Plugin {
         this.openModal(new RepairModal(this.app, labels, repairs, labels.apply, (edits) => {
           if (!edits.length || !target.isCurrent()) return
           editor.transaction({
-            changes: edits.toSorted((a, b) => a.start - b.start).map((edit) => ({
+            changes: [...edits].sort((a, b) => a.start - b.start).map((edit) => ({
               from: editor.offsetToPos(edit.start),
               to: editor.offsetToPos(edit.end),
               text: edit.replacement,

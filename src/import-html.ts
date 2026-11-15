@@ -1,11 +1,17 @@
 import TurndownService from 'turndown'
 // @ts-expect-error The GFM extension has no type declarations.
 import { gfm } from 'turndown-plugin-gfm'
+import { escapeTableMathPipes } from './format.ts'
 
 export function importHtml(html: string) {
+  // Parse and convert in the template's inert document. No clipboard nodes
+  // are inserted into the editor or the live web page.
   const template = document.createElement('template')
-  template.innerHTML = html
-  const root = template.content
+  const inertDocument = template.content.ownerDocument!
+  const wrapper = inertDocument.createElement('div')
+  const range = inertDocument.createRange()
+  range.selectNodeContents(wrapper)
+  const root = range.createContextualFragment(html)
   root.querySelectorAll('script:not([type^="math/tex"]), style, template, noscript, head, meta, link, form, button')
     .forEach((node) => node.remove())
   const converter = new TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced', bulletListMarker: '-' })
@@ -28,9 +34,9 @@ export function importHtml(html: string) {
     const display = !node.closest('td,th') && (node.classList.contains('katex-display')
       || node.matches('[display="block"],[display="true"],.math-display,script[type*="mode=display"]')
       || Boolean(node.querySelector('math[display="block"]')))
-    const formula = node.closest('td,th') ? tex.replace(/(?<!\\)\|/g, '\\vert ') : tex
+    const formula = node.closest('td,th') ? escapeTableMathPipes(tex) : tex
     const token = prefix + formulas.length + 'END'
-    const placeholder = document.createElement(display ? 'div' : 'span')
+    const placeholder = inertDocument.createElement(display ? 'div' : 'span')
     placeholder.textContent = token
     node.replaceWith(placeholder)
     formulas.push({
@@ -44,19 +50,20 @@ export function importHtml(html: string) {
   root.querySelectorAll('[href], [src]').forEach((node) => {
     for (const attribute of ['href', 'src']) {
       const address = node.getAttribute(attribute)
-      if (address && /^\s*(?:javascript|vbscript|file):/i.test(address)) node.removeAttribute(attribute)
+      if (address && /^(?:javascript|vbscript|file):/i.test(address.replace(/[\t\n\r]/g, '').trimStart())) {
+        node.removeAttribute(attribute)
+      }
     }
   })
   root.querySelectorAll('table').forEach((table) => {
     if (table.rows.length && !table.rows[0].querySelector('th')) {
       for (const cell of Array.from(table.rows[0].cells)) {
-        const header = document.createElement('th')
+        const header = inertDocument.createElement('th')
         header.append(...cell.childNodes)
         cell.replaceWith(header)
       }
     }
   })
-  const wrapper = document.createElement('div')
   wrapper.append(root)
   let markdown = converter.turndown(wrapper)
   for (const { token, markdown: formula } of formulas) markdown = markdown.replace(token, () => formula)

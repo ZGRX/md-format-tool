@@ -24,7 +24,7 @@ npm run dev
 
 ## Obsidian 插件
 
-从 [GitHub Release](https://github.com/ZGRX/md-format-tool/releases/tag/0.2.1) 下载 `md-format-tool-0.2.1.zip`，或在项目根目录运行 `npm ci` 和 `npm run build:obsidian` 构建。将 ZIP 解压到笔记库的 `.obsidian/plugins/` 目录，再到 **设置 → 第三方插件** 启用 **Markdown Format Tool**。插件需要 Obsidian 1.8.7 或更新版本。[Obsidian 手动安装说明](https://github.com/obsidianmd/obsidian-sample-plugin#manually-installing-the-plugin)
+从 [最新的 GitHub Release](https://github.com/ZGRX/md-format-tool/releases/latest) 下载 `main.js`、`manifest.json` 和 `styles.css`，将这三个文件放入笔记库的 `.obsidian/plugins/md-format-tool/` 目录，再到 **设置 → 第三方插件** 启用 **Markdown Format Tool**。要从源码构建，在项目根目录运行 `npm ci` 和 `npm run build:obsidian`，再从 `obsidian/dist/md-format-tool/` 复制这三个文件。插件需要 Obsidian 1.8.7 或更新版本。
 
 编辑笔记时直接按 **⌘V** 或 **Ctrl+V**，插件会自动将能明确识别的公式转成 Obsidian 公式格式。需要检查疑似公式时，可以使用命令面板。
 

@@ -11,7 +11,7 @@ export function download(data: Blob, filename: string) {
   link.href = url
   link.download = filename
   link.click()
-  setTimeout(() => URL.revokeObjectURL(url), 30_000)
+  window.setTimeout(() => URL.revokeObjectURL(url), 30_000)
 }
 
 export async function copyText(text: string) {
@@ -73,7 +73,6 @@ function fitBlock(element: HTMLElement, pageWidth: number) {
     const widthScale = contentWidth / Math.max(contentWidth, overflowing)
     const scale = Math.min(1, widthScale, (contentHeight - 20) / Math.max(1, area.height))
     if (scale < 1) {
-      element.style.transformOrigin = 'top left'
       element.style.transform = 'scale(' + scale + ')'
       wrapper.style.height = area.height * scale + 'px'
     }

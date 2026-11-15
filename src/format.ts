@@ -32,19 +32,25 @@ const lineNumber = (source: string, offset: number) => source.slice(0, offset).s
 export function applyEdits(source: string, edits: Edit[]) {
   let end = source.length
   let output = ''
-  for (const edit of edits.toSorted((a, b) => b.start - a.start)) {
+  for (const edit of [...edits].sort((a, b) => b.start - a.start)) {
     output = edit.replacement + source.slice(edit.end, end) + output
     end = edit.start
   }
   return source.slice(0, end) + output
 }
 
-function mathRange(source: string, pattern: RegExp, start: number) {
+function mathRange(source: string, pattern: RegExp, start: number, skipEscaped = false) {
   const boundary = /\r?\n[ \t]*\r?\n/.exec(source.slice(start))
   const end = boundary ? start + boundary.index : source.length
   pattern.lastIndex = start
-  const match = pattern.exec(source)
-  return match && match.index < end ? match : null
+  for (let match = pattern.exec(source); match && match.index < end; match = pattern.exec(source)) {
+    if (!skipEscaped || source[match.index - 1] !== '\\') return match
+  }
+  return null
+}
+
+export function escapeTableMathPipes(tex: string) {
+  return tex.replace(/\|/g, (pipe: string, offset: number) => tex[offset - 1] === '\\' ? pipe : '\\vert ')
 }
 
 export function analyze(source: string, { obsidian = false } = {}) {
@@ -98,10 +104,14 @@ export function analyze(source: string, { obsidian = false } = {}) {
   })
 
   if (obsidian) {
-    const syntax = /(?<!\\)(?:!?\[\[[^\r\n]*?\]\]|%%[\s\S]*?%%)/g
+    const syntax = /!?\[\[[^\r\n]*?\]\]|%%[\s\S]*?%%/g
     const markdownRanges = protectedRanges.slice()
     for (let match = syntax.exec(markdown); match; match = syntax.exec(markdown)) {
       const start = match.index
+      if (markdown[start - 1] === '\\') {
+        syntax.lastIndex = start + 1
+        continue
+      }
       const existing = markdownRanges.find(([from, to]) => from <= start && start < to)
       if (existing) {
         syntax.lastIndex = existing[1]
@@ -113,10 +123,13 @@ export function analyze(source: string, { obsidian = false } = {}) {
   protectedRanges.sort((a, b) => a[0] - b[0])
   const suggestions: Suggestion[] = []
   const normalized: Edit[] = []
-  const opens = /(?<!\\)\\{1,2}[[(]|(?<!\\)[[(]|(?<![\\$])[$]{1,2}(?!\$)/g
+  const opens = /\\{1,2}[[(]|[[(]|\${1,2}(?!\$)/g
   let range = 0
   for (let match = opens.exec(source); match; match = opens.exec(source)) {
     const start = match.index
+    const delimiter = match[0]
+    const dollar = delimiter.startsWith('$')
+    if (source[start - 1] === '\\' || (dollar && source[start - 1] === '$')) continue
     while (protectedRanges[range] && protectedRanges[range][1] <= start) range++
     const protectedRange = protectedRanges[range]
     if (protectedRange && protectedRange[0] <= start) {
@@ -131,18 +144,18 @@ export function analyze(source: string, { obsidian = false } = {}) {
       opens.lastIndex = protectedRange[1]
       continue
     }
-    const delimiter = match[0]
     const table = tableRanges.find(([from, to]) => start >= from && start < to)
-    if (delimiter.startsWith('$')) {
+    if (dollar) {
       const row = unevenRows.find(([from, to]) => start >= from && start < to)
       const finish = row && source.indexOf(delimiter, start + delimiter.length)
       if (row && finish && finish > start && finish + delimiter.length <= row[1]
         && (!protectedRange || protectedRange[0] >= finish + delimiter.length)) {
         const tex = source.slice(start + delimiter.length, finish)
-        if (/(?<!\\)\|/.test(tex) && !/\$/.test(tex)) {
+        const prepared = escapeTableMathPipes(tex)
+        if (prepared !== tex && !/\$/.test(tex)) {
           normalized.push({
             start, end: finish + delimiter.length,
-            replacement: '$' + tex.trim().replace(/(?<!\\)\|/g, '\\vert ') + '$',
+            replacement: '$' + escapeTableMathPipes(tex.trim()) + '$',
           })
           opens.lastIndex = finish + delimiter.length
         }
@@ -158,8 +171,8 @@ export function analyze(source: string, { obsidian = false } = {}) {
     let end: number
     if (explicit) {
       const slashCount = delimiter.length - 1
-      const closePattern = new RegExp('(?<!\\\\)\\\\{' + slashCount + '}' + (isBracket ? '\\]' : '\\)'), 'g')
-      const closing = mathRange(source, closePattern, bodyStart)
+      const closePattern = new RegExp('\\\\{' + slashCount + '}' + (isBracket ? '\\]' : '\\)'), 'g')
+      const closing = mathRange(source, closePattern, bodyStart, true)
       if (!closing || (!isBracket && source.slice(bodyStart, closing.index).includes('\n'))) {
         diagnostics.push({ start, line: lineNumber(source, start), message: 'LaTeX 分隔符缺少对应的结束符号。' })
         continue
@@ -174,7 +187,7 @@ export function analyze(source: string, { obsidian = false } = {}) {
         close = closing.index
         end = close + closing[0].length
       } else {
-        const closing = /^(?:[^\[\]\r\n]|\[[^\[\]\r\n]*\])+\]/.exec(source.slice(bodyStart))
+        const closing = /^(?:[^[\]\r\n]|\[[^[\]\r\n]*\])+\]/.exec(source.slice(bodyStart))
         if (!closing) continue
         end = bodyStart + closing[0].length
         if (!table && !standalone(source, start, end)) continue
@@ -211,7 +224,8 @@ export function analyze(source: string, { obsidian = false } = {}) {
     // HTML-to-Markdown escapes punctuation in prose, including TeX subscripts
     // and one backslash of a matrix row break. Decode only inside escaped math.
     const tex = escaped
-      ? body.replace(/(?<!\\)\\{3}(?!\\)/g, '\\\\').replace(/(?<!\\)\\_(?=[{\w])/g, '_')
+      ? body.replace(/\\+/g, (slashes) => slashes.length === 3 ? '\\\\' : slashes)
+        .replace(/(\\+)_(?=[{\w])/g, (match: string, slashes: string) => slashes.length === 1 ? '_' : match)
       : body
     if (table && source.slice(start, end).includes('\n')) continue
     const variable = /^[a-zA-Z]$/.test(tex) && /(?:变量|未知数|参数|记作|设|含有)[^。！？\n]{0,20}$/.test(source.slice(Math.max(0, start - 28), start))
@@ -221,7 +235,7 @@ export function analyze(source: string, { obsidian = false } = {}) {
     if (!isBracket && !explicit && /^(?:选项|答案|步骤|第)\s*$/.test(source.slice(Math.max(0, start - 5), start))) continue
     const display = isBracket && !table && standalone(source, start, end)
     const prepared = table
-      ? tex.replace(/(?<!\\)\|/g, '\\vert ').replace(/\\\|/g, '\\vert ')
+      ? escapeTableMathPipes(tex).replace(/\\\|/g, '\\vert ')
       : tex
     const flat = prepared.replace(/\r?\n\s*/g, ' ')
     const replacement = display ? blockMath(prepared) : '$' + flat + '$'
@@ -283,7 +297,7 @@ export function whitespaceEdits(source: string): Edit[] {
 
 export function offsetBeforeEdits(offset: number, edits: Edit[]) {
   let shift = 0
-  for (const edit of edits.toSorted((a, b) => a.start - b.start)) {
+  for (const edit of [...edits].sort((a, b) => a.start - b.start)) {
     const start = edit.start + shift
     if (offset < start) break
     if (offset < start + edit.replacement.length) return edit.start

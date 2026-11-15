@@ -24,7 +24,7 @@ Open the local address shown in your terminal, usually [http://127.0.0.1:5173/](
 
 ## Obsidian plugin
 
-Download `md-format-tool-0.2.1.zip` from the [GitHub release](https://github.com/ZGRX/md-format-tool/releases/tag/0.2.1) or build it with `npm ci` and `npm run build:obsidian`. Unzip it into `.obsidian/plugins/` inside your vault, then enable **Markdown Format Tool** under **Settings → Community plugins**. The plugin requires Obsidian 1.8.7 or later. [Obsidian manual installation guide](https://github.com/obsidianmd/obsidian-sample-plugin#manually-installing-the-plugin)
+Download `main.js`, `manifest.json`, and `styles.css` from the [latest GitHub release](https://github.com/ZGRX/md-format-tool/releases/latest). Put all three files in `.obsidian/plugins/md-format-tool/` inside your vault, then enable **Markdown Format Tool** under **Settings → Community plugins**. To build locally, run `npm ci` and `npm run build:obsidian`, then copy the files from `obsidian/dist/md-format-tool/`. The plugin requires Obsidian 1.8.7 or later.
 
 Paste directly into an open note with **⌘V** or **Ctrl+V**. The plugin converts recognizable formulas to Obsidian math syntax. Use the command palette if you want to review ambiguous formulas.
 
