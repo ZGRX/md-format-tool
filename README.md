@@ -22,6 +22,17 @@ Open the local address shown in your terminal, usually [http://127.0.0.1:5173/](
 - **Export to Word.** DOCX files use Word heading styles, native tables, and editable OMML equations by default. You can export equations as images or keep the LaTeX source where KaTeX reports an error. The browser sends the content to Pandoc through a local HTTP endpoint and downloads the generated file.
 - **Export Markdown.** Preview the rendered note or its source, then copy or download it. Exports use dollar-sign math delimiters and Markdown table syntax supported by Obsidian.
 
+## Obsidian plugin
+
+Build the plugin from the repository root with `npm ci` and `npm run build:obsidian`. Unzip `obsidian/dist/md-format-tool-0.2.1.zip` into `.obsidian/plugins/` inside your vault, then enable **Markdown Format Tool** under **Settings → Community plugins**. The plugin requires Obsidian 1.8.7 or later. [Obsidian manual installation guide](https://github.com/obsidianmd/obsidian-sample-plugin#manually-installing-the-plugin)
+
+Paste directly into an open note with **⌘V** or **Ctrl+V**. The plugin converts recognizable formulas to Obsidian math syntax. Use the command palette if you want to review ambiguous formulas.
+
+- **Paste and repair Markdown** opens a paste box and lets you review repairs before inserting content at the cursor or replacing a selection.
+- **Repair selection or current note** checks the selection, or the current note if there is no selection. It shows ambiguous formulas before you choose which ones to repair.
+
+The command labels follow Obsidian's language setting for English and Chinese, and all conversion runs locally.
+
 ## Current limitations
 
 - Recovering formulas from pasted HTML requires LaTeX annotations or `data-latex` or `data-tex` attributes in the clipboard content. Complex embeds and attachment folders have limited support. The preview and image exports render supported embedded raster images. Other images appear as placeholders, and Markdown exports keep their original URLs.

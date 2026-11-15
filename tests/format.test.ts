@@ -79,3 +79,53 @@ test('cleanup preserves hard breaks and indentation and maps offsets', () => {
   assert.equal(output, '    code\n\n第一行  \n第二行\n')
   assert.equal(offsetBeforeEdits(output.indexOf('第二行'), edits), source.indexOf('第二行'))
 })
+
+test('Obsidian repairs keep properties, wikilinks, embeds, and comments intact', () => {
+  const source = String.raw`---
+title: "(x=1)"
+---
+
+[[Note (x=2)|Alias (x=3)]]
+![[Diagram (x=4).png]]
+%% Comment (x=5) and \(x=6\) %%
+` + '`%%`' + String.raw` (x=7)
+
+公式 \(x=8\)。`
+  const result = analyze(source, { obsidian: true })
+  assert.deepEqual(result.suggestions.map((item) => item.original), ['(x=7)'])
+  assert.deepEqual(result.normalized.map((item) => item.replacement), ['$x=8$'])
+})
+
+test('Obsidian paste repairs clear math without requiring confirmation', async () => {
+  const { canFormatAtSelection, fitDisplayMath, formatPastedMarkdown } = await import('../obsidian/paste.ts')
+  const source = String.raw`变量 (n)，选项 (A)，(well-known)，公式 \(x=1\) 和 (y=2)。`
+  assert.equal(formatPastedMarkdown(source, ''), '变量 (n)，选项 (A)，(well-known)，公式 $x=1$ 和 $y=2$。')
+  assert.equal(formatPastedMarkdown(String.raw`\(\frac{1\)`, ''), null)
+  assert.equal(formatPastedMarkdown('正常段落和已有 $x=1$。', ''), null)
+  assert.equal(formatPastedMarkdown(String.raw`[[链接 (x=1)]] 和 ` + '`(y=2)`', ''), null)
+  const note = '~~~text\nexample\n~~~\n\n正文'
+  assert.equal(canFormatAtSelection(note, note.indexOf('example'), note.indexOf('example')), false)
+  assert.equal(canFormatAtSelection(note, note.length, note.length), true)
+  assert.equal(fitDisplayMath('$$\nx=1\n$$', '开头', '结尾'), '\n\n$$\nx=1\n$$\n\n')
+})
+
+test('Obsidian repairs escaped rich-text math and preserves matrix rows', async () => {
+  const { formatPastedMarkdown } = await import('../obsidian/paste.ts')
+  const escaped = [
+    '## 二次型',
+    String.raw`- \\(x\\)：向量。`,
+    '',
+    String.raw`\\[ \underbrace{\begin{pmatrix}2&2\\\ 2&3\end{pmatrix}}\_{B} \\]`,
+    '',
+    String.raw`\\[ f$x_1,x_2,\cdots,x_n$=x^TBx \\]`,
+  ].join('\n')
+  const expected = [
+    '## 二次型', '- $x$：向量。', '', '$$',
+    String.raw`\underbrace{\begin{pmatrix}2&2\\ 2&3\end{pmatrix}}_{B}`,
+    '$$', '', '$$', String.raw`f(x_1,x_2,\cdots,x_n)=x^TBx`, '$$',
+  ].join('\n')
+  assert.equal(formatPastedMarkdown(escaped, ''), expected)
+  assert.equal(formatPastedMarkdown('Copied rich text', '<h2>二次型</h2>', escaped), expected)
+  assert.equal(formatPastedMarkdown('Copied rich text', String.raw`<h2>二次型</h2><p>\(x\)</p>`, '', () => escaped), expected)
+  assert.equal(formatPastedMarkdown('正常文字', '<h2>Heading</h2>', '', () => { throw Error('Native paste should handle this') }), null)
+})

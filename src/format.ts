@@ -17,6 +17,7 @@ export interface Suggestion extends Edit {
   original: string
   line: number
   reason: string
+  autoApply: boolean
 }
 
 export interface Diagnostic {
@@ -46,9 +47,15 @@ function mathRange(source: string, pattern: RegExp, start: number) {
   return match && match.index < end ? match : null
 }
 
-export function analyze(source: string) {
-  const tree = parser.parse(source)
+export function analyze(source: string, { obsidian = false } = {}) {
+  const frontmatter = obsidian ? /^\uFEFF?---[ \t]*\r?\n[\s\S]*?^---[ \t]*(?:\r?\n|$)/m.exec(source) : null
+  const frontmatterEnd = frontmatter?.index === 0 ? frontmatter[0].length : 0
+  const markdown = frontmatterEnd
+    ? source.slice(0, frontmatterEnd).replace(/[^\r\n]/g, ' ') + source.slice(frontmatterEnd)
+    : source
+  const tree = parser.parse(markdown)
   const protectedRanges: Array<[number, number]> = []
+  if (frontmatterEnd) protectedRanges.push([0, frontmatterEnd])
   const tableRanges: Array<[number, number]> = []
   const unevenRows: Array<[number, number]> = []
   const imageFallbacks: Edit[] = []
@@ -90,10 +97,23 @@ export function analyze(source: string) {
     }
   })
 
+  if (obsidian) {
+    const syntax = /(?<!\\)(?:!?\[\[[^\r\n]*?\]\]|%%[\s\S]*?%%)/g
+    const markdownRanges = protectedRanges.slice()
+    for (let match = syntax.exec(markdown); match; match = syntax.exec(markdown)) {
+      const start = match.index
+      const existing = markdownRanges.find(([from, to]) => from <= start && start < to)
+      if (existing) {
+        syntax.lastIndex = existing[1]
+      } else {
+        protectedRanges.push([start, start + match[0].length])
+      }
+    }
+  }
   protectedRanges.sort((a, b) => a[0] - b[0])
   const suggestions: Suggestion[] = []
   const normalized: Edit[] = []
-  const opens = /(?<!\\)\\[[(]|(?<!\\)[[(]|(?<![\\$])[$]{1,2}(?!\$)/g
+  const opens = /(?<!\\)\\{1,2}[[(]|(?<!\\)[[(]|(?<![\\$])[$]{1,2}(?!\$)/g
   let range = 0
   for (let match = opens.exec(source); match; match = opens.exec(source)) {
     const start = match.index
@@ -130,18 +150,22 @@ export function analyze(source: string) {
       continue
     }
     const explicit = delimiter.startsWith('\\')
+    const escaped = delimiter.length === 3
+    if (escaped && !obsidian) continue
     const isBracket = delimiter.endsWith('[')
     const bodyStart = start + delimiter.length
     let close: number
     let end: number
     if (explicit) {
-      const closing = mathRange(source, isBracket ? /(?<!\\)\\\]/g : /(?<!\\)\\\)/g, bodyStart)
+      const slashCount = delimiter.length - 1
+      const closePattern = new RegExp('(?<!\\\\)\\\\{' + slashCount + '}' + (isBracket ? '\\]' : '\\)'), 'g')
+      const closing = mathRange(source, closePattern, bodyStart)
       if (!closing || (!isBracket && source.slice(bodyStart, closing.index).includes('\n'))) {
         diagnostics.push({ start, line: lineNumber(source, start), message: 'LaTeX 分隔符缺少对应的结束符号。' })
         continue
       }
       close = closing.index
-      end = close + 2
+      end = close + closing[0].length
     } else if (isBracket) {
       const openingLine = /^[ \t]*\r?\n/.test(source.slice(bodyStart))
       if (openingLine && standalone(source, start, bodyStart)) {
@@ -171,9 +195,24 @@ export function analyze(source: string) {
       close--
     }
 
-    // A candidate must not consume a real code span, link, or existing math.
-    if (protectedRange && protectedRange[0] < end) continue
-    const tex = source.slice(bodyStart, close).trim()
+    let body = source.slice(bodyStart, close)
+    if (protectedRange && protectedRange[0] < end) {
+      // Earlier paste repairs could turn parentheses inside escaped display
+      // math into inline dollar math. Restore those parentheses before parsing.
+      if (!escaped || !isBracket || !standalone(source, start, end)) continue
+      const inner = formulas.filter((formula) => !formula.display && formula.start >= bodyStart && formula.end <= close)
+      const covered = protectedRanges.slice(range).filter(([from]) => from < end)
+      if (!covered.every(([from, to]) => inner.some((formula) => formula.start === from && formula.end === to))) continue
+      body = applyEdits(body, inner.map((formula) => ({
+        start: formula.start - bodyStart, end: formula.end - bodyStart, replacement: '(' + formula.tex + ')',
+      })))
+    }
+    body = body.trim()
+    // HTML-to-Markdown escapes punctuation in prose, including TeX subscripts
+    // and one backslash of a matrix row break. Decode only inside escaped math.
+    const tex = escaped
+      ? body.replace(/(?<!\\)\\{3}(?!\\)/g, '\\\\').replace(/(?<!\\)\\_(?=[{\w])/g, '_')
+      : body
     if (table && source.slice(start, end).includes('\n')) continue
     const variable = /^[a-zA-Z]$/.test(tex) && /(?:变量|未知数|参数|记作|设|含有)[^。！？\n]{0,20}$/.test(source.slice(Math.max(0, start - 28), start))
     const mathLike = /\\[a-zA-Z]+|[=<>^_≤≥≠]|[a-zA-Z0-9]\s*[+*/-]\s*[a-zA-Z0-9]/.test(tex)
@@ -189,11 +228,13 @@ export function analyze(source: string) {
     const original = source.slice(start, end)
     const line = lineNumber(source, start)
     if (explicit) {
+      if (escaped && formulaError(prepared, display)) continue
       normalized.push({ start, end, replacement })
     } else {
       const error = formulaError(prepared, display)
       suggestions.push({
         start, end, replacement, original, line,
+        autoApply: !error && !variable && /\\[a-zA-Z]+|[=<>^≤≥≠]|^(?:[a-zA-Z]|\d+(?:\.\d+)?)\s*[+*/-]\s*(?:[a-zA-Z]|\d+(?:\.\d+)?)$/.test(tex),
         reason: error ? '疑似公式，需修正 LaTeX 后再应用。' : variable
           ? '上下文提到未知数或变量，可能需要数学排版。'
           : display ? '独占一段，且含数学符号或 LaTeX 命令。' : '括号内含数学符号或 LaTeX 命令。',
@@ -201,7 +242,7 @@ export function analyze(source: string) {
     }
     opens.lastIndex = end
   }
-  return { normalized, suggestions, diagnostics, formulas, imageFallbacks }
+  return { normalized, suggestions, diagnostics, formulas, imageFallbacks, protectedRanges }
 }
 
 const blockMath = (tex: string) => '$$\n' + tex + '\n$$'

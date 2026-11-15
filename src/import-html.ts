@@ -16,7 +16,8 @@ export function importHtml(html: string) {
   })
 
   const formulas: Array<{ token: string; markdown: string }> = []
-  const prefix = 'MDMATH' + crypto.randomUUID().replaceAll('-', '')
+  let prefix = 'MDMATHTOKEN'
+  while (html.includes(prefix)) prefix += 'X'
   const selector = '.katex-display, .katex, mjx-container, math, [data-latex], [data-tex], script[type^="math/tex"]'
   for (const node of root.querySelectorAll(selector)) {
     if (!root.contains(node) || node.closest('pre, code')) continue

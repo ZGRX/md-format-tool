@@ -1,0 +1,36 @@
+.md-format-tool .md-format-tool-input {
+  width: 100%;
+  min-height: 12em;
+  margin-bottom: var(--size-4-3);
+  resize: vertical;
+  font-family: var(--font-monospace);
+}
+
+.md-format-tool .md-format-tool-review {
+  max-height: 45vh;
+  overflow: auto;
+}
+
+.md-format-tool .md-format-tool-review .setting-item-info {
+  min-width: 0;
+}
+
+.md-format-tool .md-format-tool-before,
+.md-format-tool .md-format-tool-after {
+  display: block;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: var(--font-monospace);
+}
+
+.md-format-tool .md-format-tool-before {
+  color: var(--text-muted);
+}
+
+.md-format-tool .md-format-tool-after {
+  margin-top: var(--size-4-1);
+}
+
+.md-format-tool .md-format-tool-actions {
+  margin-top: var(--size-4-3);
+}
