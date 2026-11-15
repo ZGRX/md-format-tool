@@ -2,7 +2,7 @@
 
 English · [简体中文](README.zh-CN.md)
 
-Format AI-generated content on your machine. Paste plain text, Markdown, or structured content from a web page, or import a single `.md` file. Review suggested formula repairs alongside the source and export the result for WeChat, Word, or Obsidian.
+The Obsidian plugin repairs LaTeX formulas as you paste into a note. The companion web app formats AI-generated content on your machine. Paste plain text, Markdown, or structured content from a web page, or import a single `.md` file. Review suggested formula repairs alongside the source and export the result for WeChat, Word, or Obsidian.
 
 ## Getting started
 
@@ -24,7 +24,7 @@ Open the local address shown in your terminal, usually [http://127.0.0.1:5173/](
 
 ## Obsidian plugin
 
-Build the plugin from the repository root with `npm ci` and `npm run build:obsidian`. Unzip `obsidian/dist/md-format-tool-0.2.1.zip` into `.obsidian/plugins/` inside your vault, then enable **Markdown Format Tool** under **Settings → Community plugins**. The plugin requires Obsidian 1.8.7 or later. [Obsidian manual installation guide](https://github.com/obsidianmd/obsidian-sample-plugin#manually-installing-the-plugin)
+Download `md-format-tool-0.2.1.zip` from the [GitHub release](https://github.com/ZGRX/md-format-tool/releases/tag/0.2.1) or build it with `npm ci` and `npm run build:obsidian`. Unzip it into `.obsidian/plugins/` inside your vault, then enable **Markdown Format Tool** under **Settings → Community plugins**. The plugin requires Obsidian 1.8.7 or later. [Obsidian manual installation guide](https://github.com/obsidianmd/obsidian-sample-plugin#manually-installing-the-plugin)
 
 Paste directly into an open note with **⌘V** or **Ctrl+V**. The plugin converts recognizable formulas to Obsidian math syntax. Use the command palette if you want to review ambiguous formulas.
 
@@ -38,3 +38,7 @@ The command labels follow Obsidian's language setting for English and Chinese, a
 - Recovering formulas from pasted HTML requires LaTeX annotations or `data-latex` or `data-tex` attributes in the clipboard content. Complex embeds and attachment folders have limited support. The preview and image exports render supported embedded raster images. Other images appear as placeholders, and Markdown exports keep their original URLs.
 - The browser's Word preview shows content and structure. Word determines the final pagination. The sample DOCX has been checked for eight OMML equations, three boxed formulas, and a native table. Microsoft Word, WPS, Obsidian, and WeChat on mobile still need manual verification.
 - The app listens on the loopback address by default. HTML parsing, formula detection, and image generation run in your browser. Word conversion runs on your machine.
+
+## License
+
+[MIT](LICENSE). The plugin bundle includes its third-party license notices.

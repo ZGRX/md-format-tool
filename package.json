@@ -4,7 +4,7 @@
   "scripts": {
     "test": "node --experimental-strip-types --test tests/*.test.ts",
     "dev": "vite --host 127.0.0.1",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && vite build && node obsidian/build.mjs",
     "preview": "vite preview --host 127.0.0.1",
     "build:obsidian": "tsc --noEmit && node obsidian/build.mjs"
   },
@@ -39,5 +39,6 @@
     "obsidian": "1.14.4",
     "typescript": "^7.0.2",
     "vite": "^8.3.8"
-  }
+  },
+  "license": "MIT"
 }

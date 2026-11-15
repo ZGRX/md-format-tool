@@ -24,7 +24,7 @@ npm run dev
 
 ## Obsidian 插件
 
-在项目根目录运行 `npm ci` 和 `npm run build:obsidian`。将 `obsidian/dist/md-format-tool-0.2.1.zip` 解压到笔记库的 `.obsidian/plugins/` 目录，再到 **设置 → 第三方插件** 启用 **Markdown Format Tool**。插件需要 Obsidian 1.8.7 或更新版本。[Obsidian 手动安装说明](https://github.com/obsidianmd/obsidian-sample-plugin#manually-installing-the-plugin)
+从 [GitHub Release](https://github.com/ZGRX/md-format-tool/releases/tag/0.2.1) 下载 `md-format-tool-0.2.1.zip`，或在项目根目录运行 `npm ci` 和 `npm run build:obsidian` 构建。将 ZIP 解压到笔记库的 `.obsidian/plugins/` 目录，再到 **设置 → 第三方插件** 启用 **Markdown Format Tool**。插件需要 Obsidian 1.8.7 或更新版本。[Obsidian 手动安装说明](https://github.com/obsidianmd/obsidian-sample-plugin#manually-installing-the-plugin)
 
 编辑笔记时直接按 **⌘V** 或 **Ctrl+V**，插件会自动将能明确识别的公式转成 Obsidian 公式格式。需要检查疑似公式时，可以使用命令面板。
 
@@ -38,3 +38,7 @@ npm run dev
 - HTML 公式恢复依赖剪贴板中的 LaTeX 注解或 `data-latex`、`data-tex`。网页复杂嵌入和附件目录的兼容性有限。预览和导出图片仅载入可识别的内嵌位图。其他图片显示占位文字，Markdown 保留原有地址。
 - 浏览器中的 Word 预览用于检查内容与结构，实际分页由 Word 渲染。已检查示例 DOCX 内的 8 个 OMML 公式、3 个方框和原生表格。Microsoft Word、WPS、Obsidian 客户端和手机微信仍需人工验收。
 - 首版默认监听回环地址，HTML 解析、公式识别和图片生成在浏览器内完成，Word 转换在本机运行。
+
+## 许可证
+
+项目采用 [MIT 许可证](LICENSE)。插件构建产物内附第三方许可证声明。
