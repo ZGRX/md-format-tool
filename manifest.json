@@ -1,7 +1,7 @@
 {
   "id": "md-format-tool",
   "name": "Markdown Format Tool",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "minAppVersion": "1.8.7",
   "description": "Repair LaTeX formatting when pasting content and review repairs in Markdown notes.",
   "author": "ZGRX",
