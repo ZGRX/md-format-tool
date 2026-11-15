@@ -55,6 +55,21 @@ Word 导出还需要 [Pandoc](https://pandoc.org/installing.html)，支持从 PA
 
 ## 开发者指南
 
+### 粘贴修复流程
+
+```mermaid
+flowchart TD
+    A["粘贴到 Obsidian 笔记"] --> B["读取剪贴板，检查插件是否能处理这次粘贴"]
+    B -->|"可以处理"| C["选用 Markdown 或纯文本，条件允许时从 HTML 恢复 LaTeX"]
+    C --> D["识别公式并验证修复结果"]
+    D --> E{"有可自动修复的内容，且允许在当前位置修改吗？"}
+    E -->|"是"| F["将修复后的 Markdown 插入笔记"]
+    E -->|"否"| G["交给 Obsidian 正常粘贴"]
+    B -->|"无法处理"| G
+```
+
+插件在粘贴时自动应用明确的 LaTeX 修复。可通过命令面板检查疑似公式。
+
 ### 构建和测试 Obsidian 插件
 
 发布流程使用 Node.js 22。从头下载源码并在本机构建，可以执行以下命令：

@@ -55,6 +55,21 @@ Word export requires [Pandoc](https://pandoc.org/installing.html). The app looks
 
 ## Developer guide
 
+### How paste repair works
+
+```mermaid
+flowchart TD
+    A["Paste into an Obsidian note"] --> B["Read the clipboard and check whether the plugin can handle the paste"]
+    B -->|"Supported paste"| C["Choose Markdown or plain text and recover LaTeX from HTML when available"]
+    C --> D["Detect formulas and validate the proposed repairs"]
+    D --> E{"Are there automatic repairs and can the edit be applied here?"}
+    E -->|"Yes"| F["Insert the repaired Markdown into the note"]
+    E -->|"No"| G["Let Obsidian handle the paste"]
+    B -->|"Unsupported paste"| G
+```
+
+The plugin applies clear LaTeX repairs as you paste. Use the command palette to review ambiguous formulas.
+
 ### Build and test the Obsidian plugin
 
 The release workflow uses Node.js 22. To get a fresh copy and build it locally, run:
