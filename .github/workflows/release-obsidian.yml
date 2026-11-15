@@ -1,0 +1,54 @@
+name: Release Obsidian plugin
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Existing Git tag matching manifest.json, such as 0.2.1
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: obsidian-release-${{ inputs.version }}
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      RELEASE_VERSION: ${{ inputs.version }}
+    steps:
+      - name: Validate release tag
+        run: '[[ "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]'
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: refs/tags/${{ inputs.version }}
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 22
+          package-manager-cache: false
+      - name: Verify manifest version
+        run: test "$(node -p 'require("./manifest.json").version')" = "$RELEASE_VERSION"
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - name: Publish release with plugin assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > "$RUNNER_TEMP/obsidian-release-notes.md" <<'NOTES'
+          Markdown Format Tool repairs LaTeX formulas as you paste into Obsidian. Use the command palette to review ambiguous formulas.
+
+          To install manually, extract the plugin ZIP into your vault's `.obsidian/plugins/` folder and enable Markdown Format Tool in Community plugins.
+          NOTES
+          gh release create "$RELEASE_VERSION" --verify-tag \
+            --title "Markdown Format Tool $RELEASE_VERSION" \
+            --notes-file "$RUNNER_TEMP/obsidian-release-notes.md" \
+            obsidian/dist/md-format-tool/main.js \
+            obsidian/dist/md-format-tool/manifest.json \
+            obsidian/dist/md-format-tool/styles.css \
+            "obsidian/dist/md-format-tool-$RELEASE_VERSION.zip"
